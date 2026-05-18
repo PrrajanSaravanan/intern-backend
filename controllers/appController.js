@@ -40,7 +40,8 @@ exports.getApplicants = async (req, res, next) => {
 
     const applications = await Application.find({ job: req.params.jobId })
       .populate('applicant', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({ applications });
   } catch (err) {
@@ -74,7 +75,8 @@ exports.getMyApplications = async (req, res, next) => {
   try {
     const applications = await Application.find({ applicant: req.user._id })
       .populate('job', 'title company location type')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({ applications });
   } catch (err) {

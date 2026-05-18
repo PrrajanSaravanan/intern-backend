@@ -23,9 +23,11 @@ app.use(cors({ origin: process.env.CORS_ORIGIN }));
 // --- Compression (gzip all responses)
 app.use(compression());
 
-// --- Request logging
-const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
-app.use(morgan(morganFormat));
+// --- Request logging (suppressed in tests)
+if (process.env.NODE_ENV !== 'test') {
+  const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+  app.use(morgan(morganFormat));
+}
 
 // --- JSON body parsing (10 KB limit blocks oversized payloads)
 app.use(express.json({ limit: '10kb' }));
@@ -38,7 +40,10 @@ const limiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many requests, please try again later.' },
 });
-app.use('/api', limiter);
+// Rate limiting disabled in tests to avoid 429s during rapid test runs
+if (process.env.NODE_ENV !== 'test') {
+  app.use('/api', limiter);
+}
 
 // --- Routes
 app.use('/api/auth',         authRoutes);
@@ -92,7 +97,11 @@ const startServer = async () => {
   process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = app;
