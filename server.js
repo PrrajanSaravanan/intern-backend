@@ -8,6 +8,9 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
+const authRoutes = require('./routes/authRoutes');
+const jobRoutes  = require('./routes/jobRoutes');
+const appRoutes  = require('./routes/appRoutes');
 
 const app = express();
 
@@ -36,6 +39,11 @@ const limiter = rateLimit({
   message: { message: 'Too many requests, please try again later.' },
 });
 app.use('/api', limiter);
+
+// --- Routes
+app.use('/api/auth',         authRoutes);
+app.use('/api/jobs',         jobRoutes);
+app.use('/api/applications', appRoutes);
 
 // --- Health check
 app.get('/api/health', (req, res) => {
