@@ -5,7 +5,10 @@ exports.getJobs = async (req, res, next) => {
     const { q: search, location, type, page = 1, limit = 10 } = req.query;
     const query = { isActive: true };
 
-    if (search)   query.$text = { $search: search };
+    if (search) {
+      const re = { $regex: search, $options: 'i' };
+      query.$or = [{ title: re }, { company: re }, { description: re }];
+    }
     if (location) query.location = { $regex: location, $options: 'i' };
     if (type)     query.type = type;
 
