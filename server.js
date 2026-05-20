@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const jobRoutes  = require('./routes/jobRoutes');
@@ -44,6 +45,9 @@ const limiter = rateLimit({
 if (process.env.NODE_ENV !== 'test') {
   app.use('/api', limiter);
 }
+
+// --- Static file serving for uploaded resumes
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Routes
 app.use('/api/auth',         authRoutes);
