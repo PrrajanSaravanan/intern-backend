@@ -18,8 +18,9 @@ const app = express();
 // --- Security headers (always first)
 app.use(helmet());
 
-// --- CORS
-app.use(cors({ origin: process.env.CORS_ORIGIN }));
+// --- CORS (strip trailing slash so "https://example.com/" matches "https://example.com")
+const corsOrigin = process.env.CORS_ORIGIN?.replace(/\/+$/, '');
+app.use(cors({ origin: corsOrigin }));
 
 // --- Compression (gzip all responses)
 app.use(compression());
