@@ -1,4 +1,14 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
+
+// Some Windows DNS setups refuse SRV lookups that mongodb+srv requires.
+if (process.env.MONGO_URI?.startsWith('mongodb+srv://')) {
+  const servers = (process.env.MONGO_DNS_SERVERS || '1.1.1.1,8.8.8.8')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (servers.length) dns.setServers(servers);
+}
 
 const connectDB = async () => {
   const poolSize = parseInt(process.env.MONGO_POOL_SIZE, 10) || 10;
