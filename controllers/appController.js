@@ -3,7 +3,12 @@ const path = require('path');
 const { PDFParse } = require('pdf-parse');
 const Application = require('../models/Application');
 const Job = require('../models/Job');
+const User = require('../models/User');
 const { analyzeMatch } = require('../utils/resumeAnalyzer');
+const {
+  notifyEmployerNewApplication,
+  notifySeekerStatusChange,
+} = require('../utils/notify');
 const { generate: generateCL } = require('../utils/coverLetterGen');
 
 const cleanupUpload = (file) => {
@@ -45,6 +50,15 @@ exports.applyToJob = async (req, res, next) => {
       coverNote: req.body.coverNote || '',
     });
 
+    const applicant = await User.findById(req.user._id).select('name').lean();
+    await notifyEmployerNewApplication({
+      employerId: job.createdBy,
+      applicantName: applicant?.name || 'A candidate',
+      jobTitle: job.title,
+      jobId: job._id,
+      applicationId: application._id,
+    });
+
     res.status(201).json({ application });
   } catch (err) {
     cleanupUpload(req.file);
@@ -81,8 +95,20 @@ exports.updateStatus = async (req, res, next) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
+    const previousStatus = application.status;
     application.status = status;
     await application.save();
+
+    if (previousStatus !== status) {
+      await notifySeekerStatusChange({
+        seekerId: application.applicant,
+        jobTitle: application.job.title,
+        status,
+        jobId: application.job._id,
+        applicationId: application._id,
+      });
+    }
+
     res.json({ application });
   } catch (err) {
     // Mongoose validation error for invalid enum value

@@ -12,6 +12,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const jobRoutes  = require('./routes/jobRoutes');
 const appRoutes  = require('./routes/appRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const { closeAll: closeNotificationClients } = require('./services/notificationHub');
 
 const app = express();
 
@@ -22,8 +24,13 @@ app.use(helmet());
 const corsOrigin = process.env.CORS_ORIGIN?.replace(/\/+$/, '');
 app.use(cors({ origin: corsOrigin }));
 
-// --- Compression (gzip all responses)
-app.use(compression());
+// --- Compression (skip SSE — gzip breaks live notification stream)
+app.use(compression({
+  filter: (req, res) => {
+    if (req.originalUrl.includes('/notifications/stream')) return false;
+    return compression.filter(req, res);
+  },
+}));
 
 // --- Request logging (suppressed in tests)
 if (process.env.NODE_ENV !== 'test') {
@@ -34,13 +41,15 @@ if (process.env.NODE_ENV !== 'test') {
 // --- JSON body parsing (10 KB limit blocks oversized payloads)
 app.use(express.json({ limit: '10kb' }));
 
-// --- Rate limiting: 100 req / 15 min per IP across all routes
+// --- Rate limiting (relaxed in development; notifications exempt — SSE + polling)
+const isDev = process.env.NODE_ENV === 'development';
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+  max: isDev ? 1000 : (parseInt(process.env.RATE_LIMIT_MAX, 10) || 100),
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many requests, please try again later.' },
+  skip: (req) => /\/notifications(\/|$)/.test(req.originalUrl),
 });
 // Rate limiting disabled in tests to avoid 429s during rapid test runs
 if (process.env.NODE_ENV !== 'test') {
@@ -58,6 +67,7 @@ app.use('/uploads', (req, res, next) => {
 app.use('/api/auth',         authRoutes);
 app.use('/api/jobs',         jobRoutes);
 app.use('/api/applications', appRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // --- Health check
 app.get('/api/health', (req, res) => {
@@ -96,6 +106,7 @@ const startServer = async () => {
   const shutdown = async (signal) => {
     console.log(`\n${signal} received — shutting down gracefully`);
     server.close(async () => {
+      closeNotificationClients();
       await mongoose.connection.close();
       console.log('Server and DB connection closed');
       process.exit(0);
