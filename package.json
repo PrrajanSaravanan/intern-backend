@@ -30,11 +30,15 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.2",
     "morgan": "^1.10.1",
-    "multer": "^2.1.1"
+    "multer": "^2.1.1",
+    "pdf-parse": "^2.4.5"
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFilesAfterEnv": ["./tests/setup.js"],
+    "testRegex": "tests/[^/]+\\.test\\.js$",
+    "setupFilesAfterEnv": [
+      "./tests/setup.js"
+    ],
     "testTimeout": 30000
   },
   "devDependencies": {

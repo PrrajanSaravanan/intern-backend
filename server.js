@@ -48,7 +48,11 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // --- Static file serving for uploaded resumes
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Allow cross-origin loading so the deployed frontend (different domain) can open PDFs
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
+  next()
+}, express.static(path.join(__dirname, 'uploads')));
 
 // --- Routes
 app.use('/api/auth',         authRoutes);
